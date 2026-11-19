@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DOOM AI</title>
+<style>
+:root {
+  --bg:#050505;--bg-side:#0a0a0a;--bg-elevated:#141414;--bg-card:#111;--bg-input:#101010;
+  --border:#1c1c1c;--border-soft:#2a2a2a;--text:#f5f5f5;--text-dim:#d0d0d0;--text-mute:#8a8a8a;
+  --accent:#49ff96;--accent-soft:rgba(73,255,150,.14);--side-w:250px;
+  --font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;display:flex;overflow:hidden}
+.sidebar{width:var(--side-w);min-width:var(--side-w);background:var(--bg-side);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:10px 8px;overflow:auto}
+.logo-wrap{text-align:center;margin-bottom:12px;padding:6px 0}
+.logo-wrap img{width:38px;height:38px;border-radius:8px}
+.logo-text{font-weight:700;letter-spacing:1.2px;color:var(--accent);font-size:12px;margin-top:4px}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mute);padding:8px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 10px;border:none;border-radius:6px;background:transparent;color:var(--text-dim);font:inherit;font-size:12.5px;cursor:pointer}
+.nav-item:hover{background:var(--bg-elevated);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--bg)}
+.topbar h1{font-size:14.5px;font-weight:600}
+.content{flex:1;overflow:auto;padding:14px 16px;background:var(--bg)}
+.view{display:none}
+.view.active{display:block}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+.card h3{font-size:13px;margin-bottom:6px;color:var(--text-dim);font-weight:600}
+.card p,.card li{font-size:12.5px;color:var(--text-mute);line-height:1.45}
+.stat{font-size:18px;font-weight:600;color:var(--accent);margin:2px 0}
+.btn{background:var(--accent);color:#050505;border:none;border-radius:6px;padding:6px 12px;font-weight:600;font-size:12px;cursor:pointer}
+.btn.secondary{background:transparent;color:var(--text-dim);border:1px solid var(--border)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.list{list-style:none}
+.list li{padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;display:flex;justify-content:space-between;gap:10px}
+.list li:last-child{border:none}
+.chat-area{display:flex;flex-direction:column;height:calc(100vh - 90px)}
+.messages{flex:1;overflow:auto;padding:8px 0}
+.msg{max-width:72%;margin:8px 0;padding:10px 14px;border-radius:10px;font-size:13.5px;line-height:1.45}
+.msg.user{background:#1c1c1c;margin-left:auto;border-bottom-right-radius:4px}
+.msg.assistant{background:var(--bg-card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.input-row{display:flex;gap:8px;margin-top:8px}
+.input-row textarea{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font:inherit;font-size:13px;resize:none;min-height:52px}
+.pill{font-size:10.5px;padding:2px 6px;border-radius:99px;background:var(--bg-elevated);color:var(--text-mute)}
+.pill.green{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:rgba(255,180,60,.15);color:#ffb43c}
+.small{font-size:11.5px;color:var(--text-mute)}
+.metric-row{display:flex;gap:16px;margin:6px 0}
+.metric-row div{font-size:12px}
+.metric-row strong{color:var(--accent);font-size:14px}
+.timeline{list-style:none}
+.timeline li{display:grid;grid-template-columns:100px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.timeline .t{color:var(--accent);font-weight:600}
+.cmd-input{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text);font:inherit;font-size:13px;width:100%;min-height:70px;resize:vertical}
+.conn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.conn-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12.5px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.row:last-child{border:none}
+.switch{position:relative;display:inline-block;width:36px;height:20px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#333;border-radius:20px;transition:.2s}
+.slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.slider{background:var(--accent)}
+input:checked+.slider:before{transform:translateX(16px)}
+.theme-swatch{width:100%;height:32px;border-radius:5px;border:1px solid var(--border);cursor:pointer}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo-wrap">
+    <img src="/static/doom-logo.png" alt="DOOM" onerror="this.style.display='none'" />
+    <div class="logo-text">DOOM AI</div>
+  </div>
+  <div class="nav-label">Core</div>
+  <button class="nav-item active" data-view="dashboard">▣ Dashboard</button>
+  <button class="nav-item" data-view="inquiry">💬 Inquiry Desk</button>
+  <button class="nav-item" data-view="business">◆ Business</button>
+  <button class="nav-item" data-view="workspace">⊞ Company Workspace</button>
+  <button class="nav-item" data-view="website">▣ Website</button>
+  <button class="nav-item" data-view="workflow">↻ Founder Workflow</button>
+  <button class="nav-item" data-view="content">✎ Content</button>
+  <button class="nav-item" data-view="predictor">◎ Predictor</button>
+  <div class="nav-label">Team Spaces</div>
+  <button class="nav-item" data-view="eng">⚙ Engineering</button>
+  <button class="nav-item" data-view="ops">⚡ Operations</button>
+  <button class="nav-item" data-view="marketing">◈ Marketing</button>
+  <button class="nav-item" data-view="product">⊞ Product</button>
+  <button class="nav-item" data-view="designer">✎ Designer</button>
+  <button class="nav-item" data-view="high">▲ High Management</button>
+  <button class="nav-item" data-view="mid">◆ Middle Management</button>
+  <button class="nav-item" data-view="psychology">◉ Psychology</button>
+  <div class="nav-label">Tools</div>
+  <button class="nav-item" data-view="workflowpage">↻ Workflow</button>
+  <button class="nav-item" data-view="automations">⚡ Automations</button>
+  <button class="nav-item" data-view="employees">👤 AI Employees</button>
+  <button class="nav-item" data-view="media">▣ Image / Video</button>
+  <button class="nav-item" data-view="connectors">⬡ Connectors</button>
+  <button class="nav-item" data-view="warning">⚠ Warning System</button>
+  <button class="nav-item" data-view="autopilot">▶ Autopilot</button>
+  <button class="nav-item" data-view="analytics">📊 Analytics</button>
+  <button class="nav-item" data-view="customization">◇ Customization</button>
+  <button class="nav-item" data-view="modules">⊞ Modules</button>
+  <button class="nav-item" data-view="core">⚙ Core Tools</button>
+  <button class="nav-item" data-view="founder">⚑ Founder</button>
+  <button class="nav-item" data-view="settings">⚙ Settings</button>
+</aside>
+  <button class="nav-item" data-view="customization">◇ Customization</button>
+  <button class="nav-item" data-view="modules">⊞ Modules</button>
+  <button class="nav-item" data-view="settings">⚙ Settings</button>
+</aside>
+
+<section class="main">
+  <div class="topbar">
+    <h1 id="viewTitle">Company Dashboard</h1>
+    <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-mute)">
+      <select id="workspaceSelect" style="background:#101010;color:#f5f5f5;border:1px solid #1c1c1c;border-radius:4px;padding:4px 8px" onchange="switchWorkspace(this.value)">
+        <option value="web-shop">Web Shop</option>
+        <option value="demo-2">Demo Workspace 2</option>
+      </select>
+      <span>Pro · Yajat Kumar</span>
+      <button class="btn secondary" style="font-size:11px;padding:4px 8px" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="grid-4">
+        <div class="card"><h3>Workspace</h3><div class="stat">Web Shop</div><p>Pro · 2 / 3 seats</p><p class="small">Owner · Yajat Kumar</p></div>
+        <div class="card"><h3>Active Powers</h3><div class="stat">5</div><p>Business · Website · Content<br>Workflow · Predictor</p></div>
+        <div class="card"><h3>Today’s Load</h3><div class="stat">18</div><p>Actions queued · 4 need approval</p></div>
+        <div class="card"><h3>Risk Flags</h3><div class="stat" style="color:#ffb43c">2</div><p>Warning System · 1 high · 1 medium</p></div>
+      </div>
+      <div class="grid-2" style="margin-top:4px">
+        <div class="card">
+          <h3>Live Command Stream</h3>
+          <ul class="list">
+            <li><span>08:02 · Business · Overnight ops brief</span><span class="pill green">ready</span></li>
+            <li><span>08:14 · Operations · 3 Slack alerts triaged</span><span class="pill green">approved</span></li>
+            <li><span>09:15 · Content · LinkedIn draft ready</span><span class="pill amber">review</span></li>
+            <li><span>09:41 · Website · Conversion drop flagged</span><span class="pill amber">flagged</span></li>
+            <li><span>10:05 · Predictor · 30-day spend scenario</span><span class="pill">pending</span></li>
+            <li><span>10:22 · Engineering · 2 PRs waiting</span><span class="pill">GitHub</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Team Spaces · Pulse</h3>
+          <div class="grid-2" style="gap:8px">
+            <div class="card" style="cursor:pointer" onclick="showView('eng')"><h3>Engineering <span class="pill green">2 open</span></h3><p class="small">GitHub · Vercel · Linear</p></div>
+            <div class="card" style="cursor:pointer" onclick="showView('product')"><h3>Product <span class="pill">4 tasks</span></h3><p class="small">Notion · Linear</p></div>
+            <div class="card" style="cursor:pointer" onclick="showView('marketing')"><h3>Marketing <span class="pill amber">1 post</span></h3><p class="small">Buffer · Canva</p></div>
+            <div class="card" style="cursor:pointer" onclick="showView('ops')"><h3>Operations <span class="pill green">live</span></h3><p class="small">Slack · Gmail</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Approval Queue</h3>
+        <div class="row"><span>Content · LinkedIn post #42 — “Own your stack”</span><span class="pill amber">needs review</span></div>
+        <div class="row"><span>Business · Send follow-up to Convin (HubSpot)</span><span class="pill amber">needs review</span></div>
+        <div class="row"><span>Operations · Slack digest to #general</span><span class="pill">low risk</span></div>
+        <div class="row"><span>Website · Deploy preview to staging</span><span class="pill green">ready</span></div>
+      </div>
+    </div>
+
+    <!-- INQUIRY DESK -->
+    <div class="view" id="view-inquiry">
+      <div class="chat-area">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <h2 style="font-size:16px">Inquiry Desk</h2>
+            <p class="small">DOOM intelligence status · conversational · no slash commands</p>
+          </div>
+          <div>
+            <button class="btn secondary" onclick="newChat()">New conversation</button>
+          </div>
+        </div>
+        <input class="cmd-input" style="min-height:32px;margin-bottom:8px" placeholder="Search conversation history…" />
+        <div class="messages" id="messages">
+          <div class="msg assistant">Inquiry Desk online. Speak normally. Ask anything about the business, content, website, or operations. No commands required.</div>
+        </div>
+        <div class="input-row">
+          <textarea id="chatInput" placeholder="Message DOOM…" rows="2"></textarea>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <button class="btn" onclick="sendInquiry()">Send</button>
+            <button class="btn secondary" title="Voice">🎤</button>
+          </div>
+        </div>
+        <p class="small" style="margin-top:4px">Supports attachments · voice · regenerate · pin</p>
+      </div>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="view" id="view-business">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Business Management</h2>
+        <select id="bizTool" class="cmd-input" style="min-height:36px;margin-bottom:6px">
+          <option value="product-review">Product Review</option>
+          <option value="reports">Reports</option>
+          <option value="ppt">PPT</option>
+          <option value="ops-overview">Operation Overview</option>
+        </select>
+        <textarea id="bizCmd" class="cmd-input">Generate weekly ops brief from Notion + Slack.</textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn" onclick="runPowerTool('business')">Execute</button>
+          <button class="btn secondary">Schedule 08:00</button>
+          <button class="btn secondary">Dry run</button>
+        </div>
+      </div>
+        <p class="small" style="margin-top:6px">Last executed 08:02 · 42s · 0 approvals required</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Live Status</h3>
+          <div class="metric-row">
+            <div><strong>12</strong><br>actions today</div>
+            <div><strong>2</strong><br>pending</div>
+            <div><strong>86%</strong><br>approval rate</div>
+          </div>
+          <ul class="list">
+            <li><span>Overnight brief</span><span class="pill green">ready</span></li>
+            <li><span>Follow-ups · Gmail</span><span>2 drafted</span></li>
+            <li><span>Blockers</span><span>1 (HubSpot)</span></li>
+            <li><span>Connectors</span><span>Notion · Slack · Gmail</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Recent Outputs</h3>
+          <ul class="list">
+            <li><span>08:02 · Ops brief delivered</span><span>Notion</span></li>
+            <li><span>Yesterday · Day close summary</span><span>Slack</span></li>
+            <li><span>Mon · Weekly report generated</span><span class="pill green">approved</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Warning System</h3>
+        <p>1 medium flag · follow-up timing may land outside business hours for Convin. Safer path: schedule for 10:00 IST tomorrow.</p>
+      </div>
+    </div>
+
+    <!-- COMPANY WORKSPACE -->
+    <div class="view" id="view-workspace">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h2 style="font-size:16px;margin-bottom:2px">Team Command Center</h2>
+            <p class="small">Company workspace owned by the founder subscription. Employees join by invitation only — no separate payment.</p>
+          </div>
+          <button class="btn">Invite employee</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Workspace</h3>
+        <div class="grid-2">
+          <div><p class="small">Company / workspace</p><p><strong>Web Shop</strong></p></div>
+          <div><p class="small">Owner (founder)</p><p><strong>Yajat Kumar</strong></p></div>
+          <div><p class="small">Plan</p><p><strong>Pro · company seats</strong></p></div>
+          <div><p class="small">Seats</p><p><strong>2 used / 3 allowed</strong></p></div>
+        </div>
+        <p class="small" style="margin-top:8px">Subscription is attached to this workspace, not to each employee. Access updates automatically when the founder upgrades, downgrades, or cancels.</p>
+      </div>
+      <div class="card">
+        <h3>Members</h3>
+        <div class="row"><span>Yajat Kumar · yajat@webshop.local</span><span class="pill green">Owner</span></div>
+        <div class="row"><span>Backend · pending invite</span><span class="pill">invited</span></div>
+      </div>
+      <div class="card">
+        <h3>DOOM Memory · Tool Re-engineering</h3>
+        <p class="small">Learns connected tools and applies improvements in the workspace. Skips YouTube, Instagram, Facebook, LinkedIn.</p>
+        <select id="memTool" class="cmd-input" style="min-height:36px;margin-top:8px">
+          <option value="notion">Notion</option>
+          <option value="slack">Slack</option>
+          <option value="github">GitHub</option>
+          <option value="canva">Canva</option>
+          <option value="figma">Figma</option>
+          <option value="hubspot">HubSpot</option>
+          <option value="linear">Linear</option>
+          <option value="jira">Jira</option>
+          <option value="asana">Asana</option>
+          <option value="airtable">Airtable</option>
+        </select>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn" onclick="learnTool()">Learn selected tool</button>
+          <button class="btn secondary" onclick="pullPBE()">Pull PBE learnings</button>
+          <button class="btn secondary" onclick="applyLearning()">Apply to workspace</button>
+        </div>
+        <div id="memResult" class="small" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h3>Session identity (app login simulation)</h3>
+        <div class="grid-2">
+          <div><p class="small">Logged-in email</p><input class="cmd-input" style="min-height:32px" value="yajat@webshop.local" /></div>
+          <div><p class="small">Role in workspace</p><p><strong>Owner</strong></p></div>
+        </div>
+        <div style="margin-top:8px"><input class="cmd-input" style="min-height:32px" placeholder="Paste invite token (inv_…)" /> <button class="btn" style="margin-top:6px">Join workspace</button></div>
+      </div>
+    </div>
+
+    <!-- OPERATIONS (add comms) -->
+    <div class="view" id="view-ops">
+      <div class="card">
+        <h2 style="font-size:16px">Operations</h2>
+        <p class="small">Internal communication · Message · DM · Thread · Channel</p>
+      </div>
+      <div class="card">
+        <h3>Channels</h3>
+        <select id="opsChannel" class="cmd-input" style="min-height:36px">
+          <option value="general">#general</option>
+          <option value="ops">#ops</option>
+          <option value="alerts">#alerts</option>
+        </select>
+        <textarea id="opsMsg" class="cmd-input" style="margin-top:6px" placeholder="Message…"></textarea>
+        <div style="margin-top:6px;display:flex;gap:6px">
+          <button class="btn" onclick="sendOpsMsg()">Send</button>
+          <button class="btn secondary" onclick="loadOpsMsgs()">Refresh</button>
+        </div>
+        <div id="opsFeed" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="view" id="view-website">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Website Management</h2>
+        <input id="siteUrl" class="cmd-input" style="min-height:36px;margin-bottom:6px" placeholder="Site URL" />
+        <select id="webTool" class="cmd-input" style="min-height:36px;margin-bottom:6px">
+          <option value="site-url">Site URL Analysis</option>
+          <option value="ui-analyze">Site UI Analyze</option>
+          <option value="site-analytics">Site Analytics</option>
+        </select>
+        <textarea id="webCmd" class="cmd-input">Analyze conversion and propose changes.</textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn" onclick="runPowerTool('website')">Execute</button>
+          <button class="btn secondary">Preview</button>
+        </div>
+      </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Site Status</h3>
+          <div class="metric-row">
+            <div><strong>Healthy</strong><br>webshop.local</div>
+            <div><strong>2d</strong><br>last deploy</div>
+            <div><strong>-12%</strong><br>conversion</div>
+          </div>
+          <ul class="list">
+            <li><span>Vercel</span><span class="pill green">connected</span></li>
+            <li><span>GitHub</span><span class="pill green">main protected</span></li>
+            <li><span>Open issues</span><span>3</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Recent Checks</h3>
+          <div class="row"><span>09:41 · Conversion drop flagged on /</span><span class="pill amber">review</span></div>
+          <div class="row"><span>Yesterday · Lighthouse score 92</span><span class="pill green">ok</span></div>
+          <div class="row"><span>Mon · Sitemap regenerated</span><span class="pill">done</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOUNDER WORKFLOW -->
+    <div class="view" id="view-workflow">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Founder Workflow</h2>
+        <textarea class="cmd-input">Rebuild today’s timetable around deep work blocks. Protect 09:00–11:00. Move all non-urgent comms to 11:00 batch.</textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn">Execute</button>
+          <button class="btn secondary">Apply</button>
+          <button class="btn secondary">Supervision 6h</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Today</h3>
+          <ul class="timeline">
+            <li><span class="t">09:00–11:00</span><span>Deep work</span></li>
+            <li><span class="t">11:00–11:30</span><span>Comms batch</span></li>
+            <li><span class="t">11:30–13:00</span><span>Build / ship</span></li>
+            <li><span class="t">15:00–16:00</span><span>Reviews</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Business Day Cadence</h3>
+          <ul class="timeline">
+            <li><span class="t">08:00</span><span>Overnight scan · ops brief</span></li>
+            <li><span class="t">09:00</span><span>Priorities · blockers</span></li>
+            <li><span class="t">12:00</span><span>Midday check</span></li>
+            <li><span class="t">15:00</span><span>Follow-ups</span></li>
+            <li><span class="t">18:00</span><span>Close loop</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="view" id="view-content">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Content Management</h2>
+        <select id="conTool" class="cmd-input" style="min-height:36px;margin-bottom:6px">
+          <option value="content-analytics">Content Analytics</option>
+        </select>
+        <textarea id="conCmd" class="cmd-input">Draft 3 LinkedIn posts from last week’s product notes.</textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn" onclick="runPowerTool('content')">Execute</button>
+          <button class="btn secondary">Schedule</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Queue</h3>
+          <div class="metric-row">
+            <div><strong>2</strong><br>pending approval</div>
+            <div><strong>1</strong><br>scheduled</div>
+            <div><strong>0</strong><br>published today</div>
+          </div>
+          <ul class="list">
+            <li><span>Last post</span><span>30 Sep · 26 views</span></li>
+            <li><span>Account</span><span>@_webshop_777</span></li>
+            <li><span>Connectors</span><span>Buffer · Canva</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Drafts Ready</h3>
+          <div class="row"><span>LinkedIn · “Own your stack” angle</span><span class="pill amber">review</span></div>
+          <div class="row"><span>Instagram · Commander teaser</span><span class="pill">held</span></div>
+          <div class="row"><span>Changelog · Notion beta onboarding</span><span class="pill green">ready</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREDICTOR -->
+    <div class="view" id="view-predictor">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Predictor</h2>
+        <select id="predTool" class="cmd-input" style="min-height:36px;margin-bottom:6px">
+          <option value="competitor">Competitor Prediction</option>
+          <option value="share-market">Share Market Prediction</option>
+          <option value="30-day">Current 30-Day Prediction</option>
+          <option value="health-future">Current Health → Future</option>
+        </select>
+        <textarea id="predCmd" class="cmd-input">Forecast next 30-day SaaS spend.</textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn" onclick="runPowerTool('predictor')">Run forecast</button>
+          <button class="btn secondary">Compare scenarios</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Last Run</h3>
+          <div class="metric-row">
+            <div><strong>₹1.8L</strong><br>base 30-day</div>
+            <div><strong>Medium</strong><br>confidence</div>
+            <div><strong>3</strong><br>scenarios</div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Scenario Library</h3>
+          <div class="row"><span>Drop 2 tools · 30-day</span><span class="pill amber">active</span></div>
+          <div class="row"><span>Add Pro Max seat · quarterly</span><span class="pill">saved</span></div>
+          <div class="row"><span>HubSpot rebuild cost vs keep</span><span class="pill">saved</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM SPACES -->
+    <div class="view" id="view-eng">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Engineering Space</h2>
+        <div class="metric-row">
+          <div><strong>2</strong> open PRs</div>
+          <div><strong>0</strong> failed CI</div>
+          <div><strong>Healthy</strong> last deploy</div>
+        </div>
+        <ul class="list" style="margin-top:8px">
+          <li><span>PR #148 · DOOM v10.2 budgets</span><span class="pill amber">review</span></li>
+          <li><span>PR #147 · login rate limit</span><span class="pill green">ready</span></li>
+          <li><span>Vercel · webshop.local</span><span class="pill green">green</span></li>
+          <li><span>Linear · 3 engineering tasks</span><span>active</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="view" id="view-ops">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Operations Space</h2>
+        <div class="metric-row">
+          <div><strong>3</strong> alerts</div>
+          <div><strong>2</strong> approvals</div>
+          <div><strong>Live</strong> cadence</div>
+        </div>
+        <ul class="list" style="margin-top:8px">
+          <li><span>Slack · #general digest</span><span class="pill amber">pending</span></li>
+          <li><span>Gmail · Convin follow-up</span><span class="pill amber">review</span></li>
+          <li><span>Calendar · 15-min demo slots</span><span class="pill green">open</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="view" id="view-marketing">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Marketing Space</h2>
+        <div class="metric-row">
+          <div><strong>1</strong> scheduled</div>
+          <div><strong>0</strong> published today</div>
+          <div><strong>113</strong> views (30d)</div>
+        </div>
+        <ul class="list" style="margin-top:8px">
+          <li><span>Buffer · LinkedIn draft</span><span class="pill amber">review</span></li>
+          <li><span>Canva · deck update on hold</span><span>Yajat</span></li>
+          <li><span>Call list · 149 companies</span><span>1 Dec</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="view" id="view-product">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Product Space</h2>
+        <div class="metric-row">
+          <div><strong>4</strong> active tasks</div>
+          <div><strong>1</strong> blocked</div>
+          <div><strong>Q4</strong> roadmap</div>
+        </div>
+        <ul class="list" style="margin-top:8px">
+          <li><span>Notion · Beta onboarding pages</span><span>draft</span></li>
+          <li><span>Linear · Plan name alignment</span><span class="pill green">ready</span></li>
+          <li><span>PBE bridge scope</span><span class="pill amber">blocked · Yajat</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- WORKFLOW PAGE -->
+    <div class="view" id="view-workflowpage">
+      <div class="card"><h2 style="font-size:16px">Workflow</h2><p class="small">Business day, personal DOOM rhythm, your timetable — AM/PM.</p></div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between"><h3>DOOM workflow for business</h3><button class="btn secondary">Edit</button></div>
+        <ul class="timeline">
+          <li><span class="t">8:00 AM</span><span>Scan overnight · ops brief</span></li>
+          <li><span class="t">9:00 AM</span><span>Priorities · blockers</span></li>
+          <li><span class="t">12:00 PM</span><span>Midday check</span></li>
+          <li><span class="t">3:00 PM</span><span>Follow-ups</span></li>
+          <li><span class="t">6:00 PM</span><span>Close loop</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between"><h3>DOOM workflow for you</h3><button class="btn secondary">Edit</button></div>
+        <ul class="timeline">
+          <li><span class="t">7:30 AM</span><span>Personal briefing</span></li>
+          <li><span class="t">11:00 AM</span><span>Focus guard</span></li>
+          <li><span class="t">2:00 PM</span><span>Decision batch</span></li>
+          <li><span class="t">5:30 PM</span><span>Shutdown ritual</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between"><h3>Your workflow</h3><button class="btn secondary">Edit</button></div>
+        <ul class="timeline">
+          <li><span class="t">9:00 AM – 11:00 AM</span><span>Deep work</span></li>
+          <li><span class="t">11:00 AM – 11:30 AM</span><span>Comms batch</span></li>
+          <li><span class="t">11:30 AM – 1:00 PM</span><span>Build / ship</span></li>
+          <li><span class="t">3:00 PM – 4:00 PM</span><span>Reviews</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- AUTOMATIONS -->
+    <div class="view" id="view-automations">
+      <div class="card"><h2 style="font-size:16px">Automations</h2><p class="small">Business and personal — history and analysis.</p></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Automation for business · History</h3>
+          <ul class="list">
+            <li><span>Today 8:02 AM</span><span>Ops brief · Notion</span></li>
+            <li><span>Today 9:15 AM</span><span>Follow-ups · Gmail</span></li>
+            <li><span>Yesterday 6:10 PM</span><span>Day close · Slack</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Analysis</h3>
+          <div class="metric-row">
+            <div><strong>Notion</strong><br>most used</div>
+            <div><strong>Gmail</strong><br>most interacted</div>
+            <div><strong>86%</strong><br>approval rate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI EMPLOYEES -->
+    <div class="view" id="view-employees">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="font-size:16px">AI Employees</h2>
+          <button class="btn">Create employee</button>
+        </div>
+        <p class="small">Roster, create, modify, analyse. Scroll the full roster.</p>
+      </div>
+      <div class="card">
+        <h3>Ops Officer</h3>
+        <p>Function: Briefs & follow-ups<br>Automations: Morning brief<br>Connectors: Notion, Slack<br>Workflow: Business day</p>
+      </div>
+      <div class="card">
+        <h3>Content Lead</h3>
+        <p>Function: Drafts & calendars<br>Automations: Weekly pack<br>Connectors: Buffer, LinkedIn<br>Workflow: Content</p>
+      </div>
+    </div>
+
+    <!-- CORE TOOLS -->
+    <div class="view" id="view-core">
+      <div class="card">
+        <h2 style="font-size:16px">Core Tools</h2>
+        <p class="small">Search, Audit, Templates, Tasks, Calendar, Feedback, API Keys, Webhooks, Export</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Search</h3>
+          <input id="searchQ" class="cmd-input" style="min-height:36px" placeholder="Search…" />
+          <button class="btn" style="margin-top:6px" onclick="doSearch()">Search</button>
+          <div id="searchResult" class="small" style="margin-top:6px"></div>
+        </div>
+        <div class="card">
+          <h3>Templates</h3>
+          <select id="tplSelect" class="cmd-input" style="min-height:36px">
+            <option value="ops-brief">Ops Brief</option>
+            <option value="linkedin-post">LinkedIn Post</option>
+            <option value="code-review">Code Review</option>
+            <option value="campaign">Campaign Plan</option>
+            <option value="user-story">User Story</option>
+          </select>
+          <textarea id="tplCtx" class="cmd-input" style="margin-top:6px" placeholder="Context…"></textarea>
+          <button class="btn" style="margin-top:6px" onclick="runTemplate()">Run template</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Tasks</h3>
+          <input id="taskTitle" class="cmd-input" style="min-height:36px" placeholder="New task" />
+          <button class="btn" style="margin-top:6px" onclick="addTask()">Add task</button>
+          <div id="taskList" class="small" style="margin-top:6px"></div>
+        </div>
+        <div class="card">
+          <h3>Audit Log</h3>
+          <button class="btn secondary" onclick="loadAudit()">Refresh</button>
+          <div id="auditList" class="small" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Export</h3>
+        <button class="btn" onclick="doExport()">Download data</button>
+      </div>
+    </div>
+    <div class="view" id="view-finance">
+      <div class="card">
+        <h2 style="font-size:16px">Finance Workspace</h2>
+        <p class="small">10 tools · cash, runway, margins</p>
+      </div>
+      <div class="card">
+        <h3>Run Tool</h3>
+        <select id="finTool" class="cmd-input" style="min-height:36px">
+          <option value="cashflow">Cash Flow Forecast</option>
+          <option value="invoice">Invoice Tracker</option>
+          <option value="expense">Expense Audit</option>
+          <option value="budget">Budget vs Actual</option>
+          <option value="runway">Runway Calculator</option>
+          <option value="tax">Tax Reserve</option>
+          <option value="vendor-pay">Vendor Payments</option>
+          <option value="margin">Margin Analysis</option>
+          <option value="forecast">Revenue Forecast</option>
+          <option value="alert">Finance Alert</option>
+        </select>
+        <textarea id="finCmd" class="cmd-input" style="margin-top:6px" placeholder="Command…"></textarea>
+        <button class="btn" style="margin-top:6px" onclick="runFinance()">Run</button>
+        <div id="finResult" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="view" id="view-psychology">
+      <div class="card">
+        <h2 style="font-size:16px">Business Psychology</h2>
+        <p class="small">10 tools · bias, energy, alignment</p>
+      </div>
+      <div class="card">
+        <h3>Run Tool</h3>
+        <select id="psyTool" class="cmd-input" style="min-height:36px">
+          <option value="bias">Bias Check</option>
+          <option value="decision-fatigue">Decision Fatigue</option>
+          <option value="motivation">Motivation Map</option>
+          <option value="conflict">Conflict Pattern</option>
+          <option value="trust">Trust Signal</option>
+          <option value="energy">Energy Audit</option>
+          <option value="narrative">Narrative Audit</option>
+          <option value="stakeholder">Stakeholder Psychology</option>
+          <option value="resilience">Resilience Score</option>
+          <option value="alignment">Team Alignment</option>
+        </select>
+        <textarea id="psyCmd" class="cmd-input" style="margin-top:6px" placeholder="Command…"></textarea>
+        <button class="btn" style="margin-top:6px" onclick="runPsych()">Run</button>
+        <div id="psyResult" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="view" id="view-hr">
+      <div class="card">
+        <h2 style="font-size:16px">HR Workspace</h2>
+        <p class="small">12 tools · attendance feed from Settings</p>
+      </div>
+      <div class="card">
+        <h3>Invite Employees</h3>
+        <p class="small">Sets permissions on invite. Sends via company Gmail if connected.</p>
+        <textarea id="invEmails" class="cmd-input" style="min-height:60px" placeholder="Emails, one per line"></textarea>
+        <textarea id="invMsg" class="cmd-input" style="margin-top:6px" placeholder="Common message"></textarea>
+        <select id="invRole" class="cmd-input" style="min-height:36px;margin-top:6px">
+          <option value="member">Member (Dashboard + Inquiry only)</option>
+          <option value="marketing">Marketing</option>
+          <option value="engineering">Engineering</option>
+          <option value="product">Product</option>
+          <option value="operations">Operations</option>
+          <option value="finance">Finance</option>
+          <option value="mid_management">Middle Management</option>
+          <option value="high_management">High Management</option>
+          <option value="hr">HR</option>
+        </select>
+        <button class="btn" style="margin-top:6px" onclick="sendInvites()">Send invites</button>
+        <div id="invResult" class="small" style="margin-top:6px"></div>
+      </div>
+      <div class="card">
+        <h3>Edit Permissions</h3>
+        <input id="permEmail" class="cmd-input" style="min-height:36px" placeholder="Employee email" />
+        <textarea id="permAllowed" class="cmd-input" style="margin-top:6px" placeholder="Allowed views, comma separated (e.g. dashboard,inquiry,marketing)"></textarea>
+        <button class="btn" style="margin-top:6px" onclick="updatePerm()">Update permissions</button>
+      </div>
+        <div id="hrAttendance" class="small">Loading…</div>
+        <button class="btn secondary" style="margin-top:6px" onclick="loadHRAttendance()">Refresh</button>
+      </div>
+      <div class="card">
+        <h3>Run HR Tool</h3>
+        <select id="hrTool" class="cmd-input" style="min-height:36px">
+          <option value="attendance">Attendance Log</option>
+          <option value="leave">Leave Request</option>
+          <option value="payroll">Payroll Check</option>
+          <option value="onboard">Onboarding Checklist</option>
+          <option value="policy">Policy Lookup</option>
+          <option value="performance">Performance Note</option>
+          <option value="headcount">Headcount Report</option>
+          <option value="compliance">Compliance Check</option>
+          <option value="shift">Shift Planner</option>
+          <option value="exit">Exit Interview</option>
+          <option value="benefits">Benefits Query</option>
+          <option value="announcement">Announcement Draft</option>
+        </select>
+        <textarea id="hrCmd" class="cmd-input" style="margin-top:6px" placeholder="HR command…"></textarea>
+        <button class="btn" style="margin-top:6px" onclick="runHR()">Run</button>
+        <div id="hrResult" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="view" id="view-designer">
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:6px">Designer Workspace</h2>
+        <p class="small">13 AI tools · model count by plan · Pixabay stock</p>
+      </div>
+      <div class="card">
+        <h3>Tool</h3>
+        <select id="designTool" class="cmd-input" style="min-height:36px">
+          <option value="generate">Generate Image</option>
+          <option value="edit">Edit / Inpaint</option>
+          <option value="upscale">Upscale</option>
+          <option value="remove-bg">Remove Background</option>
+          <option value="color-grade">Color Grade</option>
+          <option value="typography">Typography Overlay</option>
+          <option value="layout">Layout Compose</option>
+          <option value="logo">Logo Design</option>
+          <option value="resize">Social Resize</option>
+          <option value="thumbnail">Thumbnail</option>
+          <option value="style">Style Transfer</option>
+          <option value="mockup">Mockup</option>
+          <option value="stock">Stock Search</option>
+        </select>
+        <textarea id="designPrompt" class="cmd-input" style="margin-top:8px" placeholder="Describe the design task…"></textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn" onclick="runDesign()">Run tool</button>
+          <button class="btn secondary" onclick="searchStock()">Search Pixabay</button>
+        </div>
+      </div>
+      <div class="card" id="designResult">
+        <h3>Result</h3>
+        <p class="small">Output appears here.</p>
+      </div>
+    </div>
+    <div class="view" id="view-media">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="font-size:16px">Image / Video Studio</h2>
+          <button class="btn secondary">Library</button>
+        </div>
+        <p class="small">Generate under DOOM. Browse generated and input libraries.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Prompt</h3>
+          <textarea class="cmd-input" placeholder="Describe the visual…"></textarea>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <select class="btn secondary" style="padding:5px 8px"><option>1:1</option><option>16:9</option><option>9:16</option></select>
+            <select class="btn secondary" style="padding:5px 8px"><option>Command dark</option><option>Clean product</option></select>
+            <button class="btn">Generate</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Preview</h3>
+          <div style="height:120px;background:var(--bg-elevated);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-mute);font-size:12px">Output appears here after generate.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTORS -->
+    <div class="view" id="view-connectors">
+      <div class="card">
+        <h2 style="font-size:16px">Connectors</h2>
+        <p class="small">50+ apps. Search or filter by category. Auth configs ready — wiring in next version.</p>
+        <input class="cmd-input" style="min-height:36px;margin-top:8px" placeholder="Search connectors…" />
+      </div>
+      <div class="conn-grid" id="connGrid"></div>
+    </div>
+
+    <!-- WARNING SYSTEM -->
+    <div class="view" id="view-warning">
+      <div class="card">
+        <h2 style="font-size:16px">Warning System</h2>
+        <p class="small">Reason · consequence · safer path.</p>
+      </div>
+      <div class="card">
+        <h3>Open Flags</h3>
+        <div class="row"><span>Follow-up timing outside business hours (Convin)</span><span class="pill amber">medium</span></div>
+        <div class="row"><span>Landing conversion drop >10% week-over-week</span><span class="pill amber">high</span></div>
+      </div>
+      <div class="card">
+        <h3>Safer Paths</h3>
+        <p>Schedule Convin follow-up for 10:00 IST tomorrow. Propose one copy change on landing before next deploy.</p>
+      </div>
+    </div>
+
+    <!-- AUTOPILOT -->
+    <div class="view" id="view-autopilot">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="font-size:16px">Autopilot</h2>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <p class="small">Approved work continues on cadence.</p>
+      </div>
+      <div class="card">
+        <h3>Active Cadences</h3>
+        <div class="row"><span>Morning ops brief · 08:00</span><span class="pill green">on</span></div>
+        <div class="row"><span>Day close summary · 18:00</span><span class="pill green">on</span></div>
+        <div class="row"><span>Weekly content pack · Mon 09:00</span><span class="pill">paused</span></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="view" id="view-analytics">
+      <div class="card">
+        <h2 style="font-size:16px">Analytics</h2>
+        <div class="stat">12h 40m</div>
+        <p class="small">Estimated active time this month</p>
+      </div>
+      <div class="card">
+        <h3>Overview</h3>
+        <div class="row"><span>Images generated</span><span>1</span></div>
+        <div class="row"><span>Videos generated</span><span>0</span></div>
+        <div class="row"><span>Avg session time</span><span>24 min</span></div>
+        <div class="row"><span>AI employees created</span><span>2</span></div>
+        <div class="row"><span>Connectors linked</span><span>1</span></div>
+        <div class="row"><span>Automations active</span><span>3</span></div>
+        <div class="row"><span>Chats total</span><span>4</span></div>
+        <div class="row"><span>Prompt builds</span><span>0</span></div>
+      </div>
+    </div>
+
+    <!-- CUSTOMIZATION -->
+    <div class="view" id="view-customization">
+      <div class="card"><h2 style="font-size:16px">Customization</h2><p class="small">Behavior, mimicry, instructions, voice.</p></div>
+      <div class="card">
+        <h3>Default behavior</h3>
+        <p class="small">Commanding · precise · non-submissive. Approvals before external actions.</p>
+        <label class="row" style="border:none"><input type="checkbox" checked style="margin-right:8px"> Stay commanding</label>
+        <label class="row" style="border:none"><input type="checkbox" checked style="margin-right:8px"> Short high-signal answers</label>
+        <label class="row" style="border:none"><input type="checkbox" checked style="margin-right:8px"> Auto-switch core powers</label>
+        <label class="row" style="border:none"><input type="checkbox" checked style="margin-right:8px"> Ask before external actions</label>
+        <button class="btn" style="margin-top:8px">Save default behavior</button>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h3>User mimicry</h3>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <p class="small">When ON, DOOM follows your speaking, writing, and decision style — including when you are away. Turn OFF for pure default command voice.</p>
+        <textarea class="cmd-input" style="min-height:50px;margin-top:6px" placeholder="Optional writing sample…"></textarea>
+        <button class="btn secondary" style="margin-top:6px">Update sample</button>
+      </div>
+      <div class="card">
+        <h3>Custom instructions</h3>
+        <textarea class="cmd-input" style="min-height:70px" placeholder="Write how DOOM should behave…"></textarea>
+        <div style="margin:8px 0;display:flex;gap:16px">
+          <label><input type="radio" name="scope" checked> New chats only</label>
+          <label><input type="radio" name="scope"> All chats</label>
+        </div>
+        <button class="btn">Save custom instructions</button>
+      </div>
+      <div class="card">
+        <h3>Voices</h3>
+        <p class="small">Text-to-Speech and Speech-to-Speech.</p>
+        <div style="margin-top:8px">
+          <div class="row">
+            <span><strong>CYRUS</strong> · Powerful and commanding</span>
+            <span class="pill green">Default</span>
+          </div>
+          <button class="btn secondary" style="margin-top:4px;font-size:11px" onclick="previewVoice('cyrus')">Preview</button>
+        </div>
+        <div style="margin-top:10px">
+          <div class="row">
+            <span><strong>AURELIUS</strong> · Deep, raspy, authoritative</span>
+          </div>
+          <button class="btn secondary" style="margin-top:4px;font-size:11px" onclick="previewVoice('aurelius')">Preview</button>
+        </div>
+        <div style="margin-top:10px">
+          <div class="row">
+            <span><strong>VESPERA</strong> · Playful, bright, warm</span>
+          </div>
+          <button class="btn secondary" style="margin-top:4px;font-size:11px" onclick="previewVoice('vespera')">Preview</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULES -->
+    <div class="view" id="view-modules">
+      <div class="card"><h2 style="font-size:16px">Modules</h2><p class="small">System modules under one DOOM identity.</p></div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Polymorphic Engine (PBE)</h3>
+          <p class="small">Runs on port 8001. Start and stop from DOOM.</p>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <button class="btn" onclick="startPBE()">Start PBE</button>
+            <button class="btn secondary" onclick="stopPBE()">Stop</button>
+            <button class="btn secondary" onclick="checkPBE()">Status</button>
+          </div>
+          <p id="pbeStatus" class="small" style="margin-top:6px">Not checked</p>
+        </div>
+        <div class="card" style="cursor:pointer" onclick="showView('workspace')"><h3>Team / Company Workspace →</h3><p class="small">Invite employees, seats, roles, permissions. Founder-owned workspace under paid plan.</p></div>
+        <div class="card" style="cursor:pointer" onclick="showView('employees')"><h3>AI Employees →</h3><p class="small">Roster, create, modify, analyse.</p></div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>Autopilot</h3>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <p class="small">Approved work continues on cadence.</p>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>Warning System</h3>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <p class="small">Reason · consequence · safer path.</p>
+        </div>
+        <div class="card" style="cursor:pointer"><h3>Prompt Builder →</h3><p class="small">Refine-only room. Copy when done.</p></div>
+      </div>
+    </div>
+
+    <!-- FOUNDER -->
+    <div class="view" id="view-founder">
+      <div class="card">
+        <h2 style="font-size:16px">Founder Controls</h2>
+        <p class="small">Password-protected. Set once, then use for Autopilot workflow and Roll Call.</p>
+      </div>
+      <div class="card">
+        <h3>Set Founder Password</h3>
+        <input id="founderPw" type="password" class="cmd-input" style="min-height:36px" placeholder="Founder password" />
+        <button class="btn" style="margin-top:6px" onclick="setFounderPw()">Set password</button>
+      </div>
+      <div class="card">
+        <h3>Autopilot Workflow (when you are away)</h3>
+        <textarea id="dailyFlow" class="cmd-input" placeholder="My daily workflow…"></textarea>
+        <textarea id="awayFlow" class="cmd-input" style="margin-top:6px" placeholder="How DOOM should work when I am not here…"></textarea>
+        <button class="btn" style="margin-top:6px" onclick="setAwayWorkflow()">Save workflow</button>
+      </div>
+      <div class="card">
+        <h3>Founder Tools (10)</h3>
+        <select id="fTool" class="cmd-input" style="min-height:36px">
+          <option value="decision">Decision Log</option>
+          <option value="priority">Priority Stack</option>
+          <option value="delegation">Delegation Map</option>
+          <option value="risk-review">Risk Review</option>
+          <option value="capital">Capital Allocation</option>
+          <option value="hiring">Hiring Signal</option>
+          <option value="board">Board Brief</option>
+          <option value="okrs">OKR Check</option>
+          <option value="reflection">Weekly Reflection</option>
+          <option value="shutdown">Shutdown Ritual</option>
+          <option value="brand-vision">Brand Vision</option>
+        </select>
+        <textarea id="fCmd" class="cmd-input" style="margin-top:6px" placeholder="Command…"></textarea>
+        <button class="btn" style="margin-top:6px" onclick="runFounderTool()">Run tool</button>
+      </div>
+      <div class="card">
+        <h3>Workspace Schedule</h3>
+        <input id="schTitle" class="cmd-input" style="min-height:36px" placeholder="Schedule title" />
+        <input id="schTime" class="cmd-input" style="min-height:36px;margin-top:6px" placeholder="Time (e.g. 09:00)" />
+        <button class="btn" style="margin-top:6px" onclick="addSchedule()">Add to schedule</button>
+        <div id="schList" class="small" style="margin-top:8px"></div>
+      </div>
+        <input id="rollNote" class="cmd-input" style="min-height:36px" placeholder="Status note" />
+        <button class="btn" style="margin-top:6px" onclick="doRollCall()">Log roll call</button>
+        <div id="rollList" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="view" id="view-settings">
+      <div class="card"><h2 style="font-size:16px">Settings</h2><p class="small">Founder controls. Employees do not see this page.</p></div>
+
+      <div class="card">
+        <h3>Overview</h3>
+        <div class="grid-2">
+          <div><p class="small">Plan</p><p><strong id="setPlan">Pro</strong></p></div>
+          <div><p class="small">Workspace</p><p><strong>Web Shop</strong></p></div>
+          <div><p class="small">Seats</p><p><strong>2 / 3</strong></p></div>
+          <div><p class="small">Owner</p><p><strong>Yajat Kumar</strong></p></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Usage</h3>
+        <div class="metric-row">
+          <div><strong id="usageUsed">—</strong><br>calls today</div>
+          <div><strong id="usageCap">—</strong><br>daily cap</div>
+          <div><strong id="usageRemain">—</strong><br>remaining</div>
+        </div>
+        <button class="btn secondary" style="margin-top:6px" onclick="loadUsageSettings()">Refresh</button>
+      </div>
+
+      <div class="card">
+        <h3>Connectors Connected</h3>
+        <div id="connConnected" class="small">Loading…</div>
+        <button class="btn secondary" style="margin-top:6px" onclick="loadConnected()">Refresh</button>
+      </div>
+
+      <div class="card">
+        <h3>Notifications</h3>
+        <label class="row" style="border:none"><input type="checkbox" checked> Approval alerts</label>
+        <label class="row" style="border:none"><input type="checkbox" checked> Warning flags</label>
+        <label class="row" style="border:none"><input type="checkbox"> Daily digest email</label>
+        <button class="btn" style="margin-top:6px">Save notifications</button>
+      </div>
+
+      <div class="card">
+        <h3>Updates</h3>
+        <p class="small">DOOM AI v10.3 · Latest</p>
+        <button class="btn secondary" style="margin-top:6px">Check for updates</button>
+      </div>
+
+      <div class="card">
+        <h3>Data Control</h3>
+        <p class="small">Founder only. Export or clear workspace data.</p>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn" onclick="exportData()">Export data</button>
+          <button class="btn secondary" onclick="if(confirm('Clear local cache?')) localStorage.clear()">Clear cache</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Appearance · Themes</h3>
+        <div class="grid-4" style="margin-top:8px">
+          <div><div class="theme-swatch" style="background:#050505"></div><p class="small" style="text-align:center;margin-top:4px">Charcoal / Green</p></div>
+          <div><div class="theme-swatch" style="background:#f4f1ea"></div><p class="small" style="text-align:center;margin-top:4px">Off-White</p></div>
+          <div><div class="theme-swatch" style="background:#0a1628"></div><p class="small" style="text-align:center;margin-top:4px">Bluish</p></div>
+          <div><div class="theme-swatch" style="background:#1a0f14"></div><p class="small" style="text-align:center;margin-top:4px">Pinkish</p></div>
+          <div><div class="theme-swatch" style="background:#1a1708"></div><p class="small" style="text-align:center;margin-top:4px">Yellowish</p></div>
+          <div><div class="theme-swatch" style="background:#000"></div><p class="small" style="text-align:center;margin-top:4px">Complete Dark</p></div>
+          <div><div class="theme-swatch" style="background:#0d1f1a"></div><p class="small" style="text-align:center;margin-top:4px">Myrtle</p></div>
+          <div><div class="theme-swatch" style="background:#1a1e24"></div><p class="small" style="text-align:center;margin-top:4px">Casper</p></div>
+          <div><div class="theme-swatch" style="background:#c46b4a"></div><p class="small" style="text-align:center;margin-top:4px">Terracotta & Cream</p></div>
+          <div><div class="theme-swatch" style="background:#4a2040"></div><p class="small" style="text-align:center;margin-top:4px">Deep Plum & Champagne</p></div>
+          <div><div class="theme-swatch" style="background:#9b8ec4"></div><p class="small" style="text-align:center;margin-top:4px">Lavender & Slate</p></div>
+          <div><div class="theme-swatch" style="background:#ff6b6b"></div><p class="small" style="text-align:center;margin-top:4px">Coral & Teal</p></div>
+          <div><div class="theme-swatch" style="background:#a89080"></div><p class="small" style="text-align:center;margin-top:4px">Taupe & Burnt Orange</p></div>
+          <div><div class="theme-swatch" style="background:#0a0a0f"></div><p class="small" style="text-align:center;margin-top:4px">Obsidian & Violet</p></div>
+        </div>
+        <button class="btn" style="margin-top:10px">Save theme</button>
+      </div>
+
+      <div class="card">
+        <h3>Mark Attendance</h3>
+        <p class="small">Employees mark attendance here. Updates in HR.</p>
+        <input id="attEmail" class="cmd-input" style="min-height:36px" placeholder="Your email" />
+        <select id="attStatus" class="cmd-input" style="min-height:36px;margin-top:6px">
+          <option value="present">Present</option>
+          <option value="remote">Remote</option>
+          <option value="leave">Leave</option>
+        </select>
+        <input id="attNote" class="cmd-input" style="min-height:36px;margin-top:6px" placeholder="Optional note" />
+        <button class="btn" style="margin-top:6px" onclick="markAttendance()">Mark attendance</button>
+      </div>
+
+      <div class="card">
+        <h3>Security and login</h3>
+        <p>Session security.</p>
+        <button class="btn secondary" style="margin-top:6px">Sign out all devices</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+const titles = {
+  dashboard:"Company Dashboard", inquiry:"Inquiry Desk", business:"Business Management",
+  workspace:"Company Workspace", website:"Website Management", workflow:"Founder Workflow",
+  content:"Content Management", predictor:"Predictor", eng:"Engineering", ops:"Operations",
+  marketing:"Marketing", product:"Product", workflowpage:"Workflow", automations:"Automations",
+  employees:"AI Employees", media:"Image / Video", connectors:"Connectors", warning:"Warning System",
+  autopilot:"Autopilot", analytics:"Analytics", customization:"Customization", modules:"Modules",
+  settings:"Settings", founder:"Founder", hr:"HR", finance:"Finance", psychology:"Business Psychology",
+  high:"High Management", mid:"Middle Management", designer:"Designer", core:"Core Tools"
+};
+
+let currentPlan = "pro";
+let currentUser = null;
+
+try { currentUser = JSON.parse(localStorage.getItem("doom_user") || "null"); } catch(e) {}
+
+function applyPermissions() {
+  if (!currentUser || currentUser.type === "founder" || currentUser.can_bill) return;
+  // Employee: hide restricted nav, but allow Settings
+  const restricted = ["founder", "core", "modules", "customization", "analytics"];
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    const view = btn.dataset.view;
+    if (restricted.includes(view)) btn.style.display = "none";
+  });
+  // Hide founder-only cards inside Settings
+  if (document.getElementById("view-settings")) {
+    document.querySelectorAll("#view-settings .card").forEach(c => {
+      const h = c.querySelector("h3")?.textContent || "";
+      if (!h.includes("Mark Attendance") && !h.includes("Appearance") && !h.includes("Settings")) {
+        c.style.display = "none";
+      }
+    });
+  }
+}
+
+function showView(name) {
+  if (currentUser && currentUser.type === "employee") {
+    const blocked = ["founder", "core", "modules", "customization", "analytics"];
+    if (blocked.includes(name)) {
+      alert("YOU ARE NOT AUTHORISED FOR THIS PAGE/SECTION");
+      return;
+    }
+  }
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+  const view = document.getElementById("view-" + name);
+  if (view) view.classList.add("active");
+  const btn = document.querySelector(`[data-view="${name}"]`);
+  if (btn) btn.classList.add("active");
+  document.getElementById("viewTitle").textContent = titles[name] || name;
+  if (name === "connectors") loadConnectors();
+  if (name === "employees") loadEmployees();
+  if (name === "dashboard") loadApprovals();
+  if (name === "settings" && currentUser && currentUser.type === "employee") {
+    // Ensure only attendance + themes visible
+    document.querySelectorAll("#view-settings .card").forEach(c => {
+      const h = c.querySelector("h3")?.textContent || "";
+      if (!h.includes("Mark Attendance") && !h.includes("Appearance") && !h.includes("Settings")) {
+        c.style.display = "none";
+      }
+    });
+  }
+}
+
+const titles = {
+  dashboard:"Company Dashboard", inquiry:"Inquiry Desk", business:"Business Management",
+  workspace:"Company Workspace", website:"Website Management", workflow:"Founder Workflow",
+  content:"Content Management", predictor:"Predictor", eng:"Engineering", ops:"Operations",
+  marketing:"Marketing", product:"Product", workflowpage:"Workflow", automations:"Automations",
+  employees:"AI Employees", media:"Image / Video", connectors:"Connectors", warning:"Warning System",
+  autopilot:"Autopilot", analytics:"Analytics", customization:"Customization", modules:"Modules",
+  settings:"Settings", designer:"Designer", high:"High Management", mid:"Middle Management",
+  psychology:"Psychology", founder:"Founder", core:"Core Tools"
+};
+
+function switchWorkspace(id) {
+  localStorage.setItem("doom_workspace", id);
+  alert("Switched to workspace: " + id);
+  location.reload();
+}
+
+function logout() {
+  localStorage.removeItem("doom_token");
+  location.href = "/login";
+}
+
+// Redirect to login if no token
+if (!localStorage.getItem("doom_token") && !location.pathname.includes("login")) {
+  // soft check — remove if you want open demo
+  // location.href = "/login";
+}
+
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+  const view = document.getElementById("view-" + name);
+  if (view) view.classList.add("active");
+  const btn = document.querySelector(`[data-view="${name}"]`);
+  if (btn) btn.classList.add("active");
+  document.getElementById("viewTitle").textContent = titles[name] || name;
+  if (name === "connectors") loadConnectors();
+  if (name === "employees") loadEmployees();
+  if (name === "dashboard") loadApprovals();
+}
+
+document.querySelectorAll(".nav-item").forEach(btn => {
+  btn.addEventListener("click", () => showView(btn.dataset.view));
+});
+
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(path, {
+      headers: { "Content-Type": "application/json", ...opts.headers },
+      ...opts
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  } catch (e) {
+    console.error(e);
+    alert("Request failed: " + e.message);
+    throw e;
+  }
+}
+
+async function sendInquiry() {
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+  const messages = document.getElementById("messages");
+  messages.innerHTML += `<div class="msg user">${text}</div>`;
+  input.value = "";
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    const data = await api("/api/inquiry/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages: [{ role: "user", content: text }], plan: currentPlan })
+    });
+    const reply = data.reply || "No reply";
+    messages.innerHTML += `<div class="msg assistant">${reply.replace(/\n/g, "<br>")}</div>`;
+  } catch (e) {
+    messages.innerHTML += `<div class="msg assistant">Error reaching backend.</div>`;
+  }
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function newChat() {
+  document.getElementById("messages").innerHTML = `<div class="msg assistant">New conversation started. Speak normally.</div>`;
+}
+
+async function loadConnectors() {
+  const el = document.getElementById("connGrid");
+  try {
+    const list = await api("/api/connectors/");
+    el.innerHTML = list.map(c => `
+      <div class="conn-card">
+        <div style="font-weight:600">${c.name}</div>
+        <div class="small">${c.connected ? '<span class="pill green">Connected</span>' : 'Not connected'}</div>
+        <button class="btn" style="margin-top:6px;font-size:11px" onclick="connectApp('${c.id}')">${c.connected ? 'Reconnect' : 'Connect'}</button>
+      </div>
+    `).join("");
+  } catch (e) {
+    el.innerHTML = "<p>Failed to load connectors</p>";
+  }
+}
+
+async function connectApp(id) {
+  try {
+    const data = await api(`/api/connectors/${id}/connect`, { method: "POST" });
+    if (data.auth_url) {
+      window.open(data.auth_url, "_blank");
+    } else {
+      alert(data.note || "Connected in demo mode");
+      loadConnectors();
+    }
+  } catch (e) {}
+}
+
+async function runPowerTool(power) {
+  const toolMap = { business: "bizTool", website: "webTool", content: "conTool", predictor: "predTool" };
+  const cmdMap = { business: "bizCmd", website: "webCmd", content: "conCmd", predictor: "predCmd" };
+  const tool = document.getElementById(toolMap[power])?.value;
+  const command = document.getElementById(cmdMap[power])?.value.trim();
+  if (!tool || !command) return alert("Select tool and enter command");
+  const extra = {};
+  if (power === "website") extra.url = document.getElementById("siteUrl")?.value;
+  const data = await api("/api/power-tools/run", { method: "POST", body: JSON.stringify({ power, tool, command, plan: currentPlan, extra }) });
+  alert((data.output || "").slice(0, 500));
+}
+  const textarea = document.querySelector(`#view-${power} textarea`);
+  const command = textarea ? textarea.value.trim() : "";
+  if (!command) return alert("Enter a command");
+  try {
+    const data = await api(`/api/powers/${power === "predictor" ? "predictor/run" : power + "/execute"}`, {
+      method: "POST",
+      body: JSON.stringify({ command, plan: currentPlan })
+    });
+    alert(`Done (${data.model_count || 1} model(s))\n\n${(data.output || "").slice(0, 400)}...`);
+  } catch (e) {}
+}
+
+async function loadEmployees() {
+  try {
+    const data = await api("/api/employees/");
+    const container = document.querySelector("#view-employees .card:last-child") || document.querySelector("#view-employees");
+    // simple refresh display
+    console.log("Employees loaded", data);
+  } catch (e) {}
+}
+
+async function runEmployee(empId) {
+  const cmd = prompt("Command for employee:");
+  if (!cmd) return;
+  try {
+    const data = await api(`/api/employees/${empId}/run`, {
+      method: "POST",
+      body: JSON.stringify({ command: cmd, plan: currentPlan })
+    });
+    alert(`Employee done (${data.model_count} model(s))\n\n${(data.output || "").slice(0, 500)}`);
+  } catch (e) {}
+}
+
+async function decideApproval(id, decision) {
+  try {
+    const data = await api(`/api/approvals/${id}/decide`, {
+      method: "POST",
+      body: JSON.stringify({ decision })
+    });
+    alert(`Approval ${decision}`);
+    if (decision === "approve" && data.approval && data.approval.payload) {
+      // Auto-execute the stored automation after approval
+      const p = data.approval.payload;
+      await api("/api/automations/run", {
+        method: "POST",
+        body: JSON.stringify({ ...p, skip_approval: true })
+      });
+      alert("Action executed after approval");
+    }
+    loadApprovals();
+  } catch (e) {}
+}
+
+async function sendInvites() {
+  const emails = document.getElementById("invEmails").value.split("\n").map(e => e.trim()).filter(Boolean);
+  const message = document.getElementById("invMsg").value;
+  const role = document.getElementById("invRole").value;
+  if (!emails.length) return alert("Add at least one email");
+  const data = await api("/api/hr/invite", { method: "POST", body: JSON.stringify({ emails, message, role, set_by: "hr" }) });
+  document.getElementById("invResult").textContent = data.status === "sent" ? `Sent to ${data.count} with role ${role}` : (data.note || "Queued");
+}
+
+async function updatePerm() {
+  const email = document.getElementById("permEmail").value.trim();
+  const allowed = document.getElementById("permAllowed").value.split(",").map(s => s.trim()).filter(Boolean);
+  if (!email || !allowed.length) return alert("Email and allowed views required");
+  await api("/api/permissions/update", { method: "POST", body: JSON.stringify({ email, allowed, set_by: "founder" }) });
+  alert("Permissions updated");
+}
+  const tool = document.getElementById("finTool").value;
+  const command = document.getElementById("finCmd").value.trim();
+  if (!command) return alert("Enter command");
+  const data = await api("/api/finance/run", { method: "POST", body: JSON.stringify({ tool, command, plan: currentPlan }) });
+  document.getElementById("finResult").innerHTML = `<pre style="white-space:pre-wrap">${(data.output || "").slice(0, 500)}</pre>`;
+}
+
+async function runPsych() {
+  const tool = document.getElementById("psyTool").value;
+  const command = document.getElementById("psyCmd").value.trim();
+  if (!command) return alert("Enter command");
+  const data = await api("/api/psychology/run", { method: "POST", body: JSON.stringify({ tool, command, plan: currentPlan }) });
+  document.getElementById("psyResult").innerHTML = `<pre style="white-space:pre-wrap">${(data.output || "").slice(0, 500)}</pre>`;
+}
+  const pw = document.getElementById("founderPw").value;
+  const tool = document.getElementById("fTool").value;
+  const command = document.getElementById("fCmd").value;
+  if (!pw || !command) return alert("Password and command required");
+  const data = await api("/api/founder/tools/run", { method: "POST", body: JSON.stringify({ tool, command, plan: currentPlan, password: pw }) });
+  alert((data.output || "").slice(0, 400));
+}
+
+async function addSchedule() {
+  const pw = document.getElementById("founderPw").value;
+  const title = document.getElementById("schTitle").value;
+  const time = document.getElementById("schTime").value;
+  if (!pw || !title) return alert("Password and title required");
+  await api("/api/founder/tools/schedule", { method: "POST", body: JSON.stringify({ title, time, space: "founder", password: pw }) });
+  const data = await api("/api/founder/tools/schedule");
+  document.getElementById("schList").innerHTML = (data.schedule || []).map(s => `<div>${s.time} · ${s.title}</div>`).join("");
+}
+
+async function sendOpsMsg() {
+  const channel = document.getElementById("opsChannel").value;
+  const text = document.getElementById("opsMsg").value.trim();
+  if (!text) return;
+  await api("/api/comms/message", { method: "POST", body: JSON.stringify({ channel, text, author: "user" }) });
+  document.getElementById("opsMsg").value = "";
+  loadOpsMsgs();
+}
+
+async function loadOpsMsgs() {
+  const channel = document.getElementById("opsChannel").value;
+  const data = await api("/api/comms/messages?channel=" + channel);
+  document.getElementById("opsFeed").innerHTML = (data.messages || []).map(m => `<div>${m.time.slice(11,16)} · ${m.author}: ${m.text}</div>`).join("") || "No messages";
+}
+  const cid = document.getElementById("memTool").value;
+  try {
+    const data = await api("/api/memory/learn", { method: "POST", body: JSON.stringify({ connector_id: cid, plan: currentPlan }) });
+    document.getElementById("memResult").innerHTML = `<pre style="white-space:pre-wrap">${(data.output || "").slice(0, 500)}</pre>`;
+  } catch (e) {
+    document.getElementById("memResult").textContent = "Tool must be connected first.";
+  }
+}
+
+async function pullPBE() {
+  try {
+    const data = await api("/api/memory/learn/pbe", { method: "POST" });
+    document.getElementById("memResult").textContent = "PBE learnings saved to DOOM memory.";
+  } catch (e) {
+    document.getElementById("memResult").textContent = "PBE not reachable.";
+  }
+}
+
+async function applyLearning() {
+  const cid = document.getElementById("memTool").value;
+  try {
+    const data = await api("/api/memory/apply", { method: "POST", body: JSON.stringify({ connector_id: cid, plan: currentPlan }) });
+    document.getElementById("memResult").innerHTML = `<pre style="white-space:pre-wrap">${(data.output || "").slice(0, 500)}</pre>`;
+  } catch (e) {
+    document.getElementById("memResult").textContent = "No learning found. Run Learn first.";
+  }
+}
+  try {
+    const data = await api("/api/pbe/process/start", { method: "POST" });
+    document.getElementById("pbeStatus").textContent = "Started · " + JSON.stringify(data);
+  } catch (e) {
+    document.getElementById("pbeStatus").textContent = "Failed to start. Check PBE_DIR.";
+  }
+}
+
+async function stopPBE() {
+  const data = await api("/api/pbe/process/stop", { method: "POST" });
+  document.getElementById("pbeStatus").textContent = "Stopped";
+}
+
+async function checkPBE() {
+  try {
+    const proc = await api("/api/pbe/process/status");
+    const health = await api("/api/pbe/health").catch(() => ({ error: "not responding" }));
+    document.getElementById("pbeStatus").textContent = `Process: ${proc.running ? "running" : "stopped"} · Health: ${JSON.stringify(health)}`;
+  } catch (e) {
+    document.getElementById("pbeStatus").textContent = "PBE not reachable";
+  }
+}
+  const audio = new Audio("/api/voice/sample/" + id);
+  audio.play().catch(() => alert(id.toUpperCase() + " sample loading…"));
+}
+
+async function speakText(text, voiceId = "cyrus") {
+  const data = await api("/api/voice/tts", {
+    method: "POST",
+    body: JSON.stringify({ text, voice_id: voiceId })
+  });
+  if (data.audio_url) {
+    const audio = new Audio(data.audio_url);
+    audio.play().catch(() => {});
+  }
+  return data;
+}
+  const q = document.getElementById("searchQ").value.trim();
+  if (!q) return;
+  const data = await api("/api/core/search", { method: "POST", body: JSON.stringify({ q }) });
+  document.getElementById("searchResult").innerHTML = (data.results || []).map(r => `<div>${r.type}: ${r.item.name || r.item.title}</div>`).join("") || "No results";
+}
+
+async function runTemplate() {
+  const id = document.getElementById("tplSelect").value;
+  const ctx = document.getElementById("tplCtx").value;
+  const data = await api("/api/core/templates/run", { method: "POST", body: JSON.stringify({ template_id: id, context: ctx, plan: currentPlan }) });
+  alert((data.output || "").slice(0, 400));
+}
+
+async function addTask() {
+  const title = document.getElementById("taskTitle").value.trim();
+  if (!title) return;
+  await api("/api/core/tasks", { method: "POST", body: JSON.stringify({ title, space: "operations" }) });
+  const data = await api("/api/core/tasks");
+  document.getElementById("taskList").innerHTML = (data.tasks || []).map(t => `<div>${t.title}</div>`).join("");
+  document.getElementById("taskTitle").value = "";
+}
+
+async function loadAudit() {
+  const data = await api("/api/core/audit");
+  document.getElementById("auditList").innerHTML = (data.audit || []).slice(-8).map(a => `<div>${a.time.slice(11,16)} · ${a.action}</div>`).join("") || "Empty";
+}
+
+async function doExport() {
+  const data = await api("/api/core/export");
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "doom-export.json";
+  a.click();
+}
+  const email = document.getElementById("attEmail").value.trim();
+  const status = document.getElementById("attStatus").value;
+  const note = document.getElementById("attNote").value;
+  if (!email) return alert("Email required");
+  await api("/api/hr/attendance", { method: "POST", body: JSON.stringify({ email, status, note }) });
+  alert("Attendance marked");
+  document.getElementById("attNote").value = "";
+}
+
+async function loadHRAttendance() {
+  const data = await api("/api/hr/attendance");
+  const el = document.getElementById("hrAttendance");
+  if (!el) return;
+  el.innerHTML = (data.attendance || []).slice(-10).map(a =>
+    `<div>${a.time.slice(11,16)} · ${a.email} · ${a.status}</div>`
+  ).join("") || "<p>No attendance yet</p>";
+}
+
+async function runHR() {
+  const tool = document.getElementById("hrTool").value;
+  const command = document.getElementById("hrCmd").value.trim();
+  if (!command) return alert("Enter command");
+  const data = await api("/api/hr/run", { method: "POST", body: JSON.stringify({ tool, command, plan: currentPlan }) });
+  document.getElementById("hrResult").innerHTML = `<pre style="white-space:pre-wrap">${(data.output || "").slice(0, 600)}</pre>`;
+}
+  const pw = document.getElementById("founderPw").value;
+  if (!pw) return alert("Enter password");
+  await api("/api/founder/password/set", { method: "POST", body: JSON.stringify({ password: pw }) });
+  alert("Founder password set");
+}
+
+async function setAwayWorkflow() {
+  const pw = document.getElementById("founderPw").value;
+  const daily = document.getElementById("dailyFlow").value;
+  const away = document.getElementById("awayFlow").value;
+  if (!pw || !daily) return alert("Password and daily workflow required");
+  const data = await api("/api/founder/autopilot/workflow", {
+    method: "POST",
+    body: JSON.stringify({ daily, when_away: away, plan: currentPlan, password: pw })
+  });
+  alert(`Workflow set (${data.model_count} models)`);
+}
+
+async function doRollCall() {
+  const pw = document.getElementById("founderPw").value;
+  const note = document.getElementById("rollNote").value;
+  if (!pw || !note) return alert("Password and note required");
+  await api("/api/founder/rollcall", { method: "POST", body: JSON.stringify({ note, password: pw }) });
+  const list = await api("/api/founder/rollcall");
+  document.getElementById("rollList").innerHTML = (list.roll_call || []).map(r => `<div>${r.time.slice(11,16)} · ${r.note}</div>`).join("");
+  document.getElementById("rollNote").value = "";
+}
+  const tool = document.getElementById("designTool").value;
+  const prompt = document.getElementById("designPrompt").value.trim();
+  if (!prompt) return alert("Enter a prompt");
+  try {
+    const data = await api("/api/designer/run", {
+      method: "POST",
+      body: JSON.stringify({ tool, prompt, plan: currentPlan })
+    });
+    document.getElementById("designResult").innerHTML = `<h3>Result (${data.model_count} model(s))</h3><pre style="white-space:pre-wrap;font-size:12px">${data.output || ""}</pre>`;
+  } catch (e) {}
+}
+
+async function searchStock() {
+  const q = document.getElementById("designPrompt").value.trim() || "business";
+  try {
+    const data = await api("/api/designer/stock", {
+      method: "POST",
+      body: JSON.stringify({ query: q, type: "image", per_page: 6 })
+    });
+    const hits = (data.results || []).map(h => `<div class="small">${h.tags || h.id}</div>`).join("");
+    document.getElementById("designResult").innerHTML = `<h3>Pixabay · ${data.total || 0} hits</h3>${hits || "<p class='small'>No results or key missing</p>"}`;
+  } catch (e) {}
+}
+  const prompt = document.querySelector("#view-media textarea")?.value.trim();
+  if (!prompt) return alert("Enter a prompt");
+  try {
+    const data = await api("/api/media/generate", {
+      method: "POST",
+      body: JSON.stringify({ prompt, plan: currentPlan, type: "image" })
+    });
+    alert(`Generated with ${data.model_used}\n\n${(data.output || "").slice(0, 400)}`);
+  } catch (e) {}
+}
+
+async function loadUsage() {
+  try {
+    const data = await api(`/api/billing/usage?plan=${currentPlan}`);
+    const el = document.querySelector("#view-analytics .stat");
+    if (el) el.textContent = `${data.used_today} / ${data.daily_cap}`;
+  } catch (e) {}
+}
+
+// Wire more buttons
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".btn");
+  if (!btn) return;
+  const text = btn.textContent.trim();
+  const view = btn.closest(".view");
+  if (!view) return;
+  const viewId = view.id.replace("view-", "");
+
+  if (text === "Generate" && viewId === "media") {
+    e.preventDefault();
+    generateMedia();
+  }
+  if (text === "View plans") {
+    e.preventDefault();
+    api("/api/billing/plans").then(d => alert(JSON.stringify(d.plans, null, 2)));
+  }
+});
+
+// Load usage when analytics is shown
+const origShow = showView;
+showView = function(name) {
+  origShow(name);
+  if (name === "analytics") loadUsage();
+};
+
+async function loadApprovals() {
+  try {
+    const data = await api("/api/approvals/");
+    const q = document.querySelector("#view-dashboard .card:last-child");
+    if (q && data.approvals) {
+      q.innerHTML = `<h3>Approval Queue</h3>` + data.approvals.map(a => `
+        <div class="row">
+          <span>${a.title}</span>
+          <span>
+            <button class="btn" style="font-size:11px;padding:3px 8px" onclick="decideApproval('${a.id}','approve')">Approve</button>
+            <button class="btn secondary" style="font-size:11px;padding:3px 8px" onclick="decideApproval('${a.id}','reject')">Reject</button>
+          </span>
+        </div>
+      `).join("") || "<p class='small'>No pending approvals</p>";
+    }
+  } catch (e) {}
+}
+
+// Wire AI Employee run buttons
+document.addEventListener("click", (e) => {
+  if (e.target.matches(".btn") && e.target.closest("#view-employees")) {
+    const card = e.target.closest(".card");
+    if (card && card.querySelector("h3")) {
+      const name = card.querySelector("h3").textContent.toLowerCase().replace(/ /g, "-");
+      if (name.includes("officer") || name.includes("lead")) {
+        e.preventDefault();
+        runEmployee(name);
+      }
+    }
+  }
+});
+async function loadUsageSettings() {
+  try {
+    const data = await api("/api/billing/usage?plan=" + currentPlan);
+    const u = document.getElementById("usageUsed");
+    const c = document.getElementById("usageCap");
+    const r = document.getElementById("usageRemain");
+    if (u) u.textContent = data.used_today;
+    if (c) c.textContent = data.daily_cap;
+    if (r) r.textContent = data.remaining;
+  } catch (e) {}
+}
+
+async function loadConnected() {
+  try {
+    const list = await api("/api/connectors/");
+    const connected = list.filter(c => c.connected);
+    const el = document.getElementById("connConnected");
+    if (el) el.innerHTML = connected.length ? connected.map(c => `<div>${c.name}</div>`).join("") : "None connected";
+  } catch (e) {}
+}
+
+async function exportData() {
+  try {
+    const data = await api("/api/core/export");
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "doom-export.json";
+    a.click();
+  } catch (e) {}
+}
+
+async function markAttendance() {
+  const email = document.getElementById("attEmail")?.value.trim();
+  const status = document.getElementById("attStatus")?.value;
+  const note = document.getElementById("attNote")?.value;
+  if (!email) return alert("Email required");
+  await api("/api/hr/attendance", { method: "POST", body: JSON.stringify({ email, status, note }) });
+  alert("Attendance marked");
+}
+</body>
+</html>
